@@ -39,7 +39,10 @@ function updateCellCursors() {
             cell.style.cursor = 'default';
         } else {
             cell.classList.remove('red-cursor', 'blue-cursor');
-            cell.classList.add(currentPlayer === 'red' ? 'red-cursor' : 'blue-cursor');
+            // Small delay to force browser to re-render cursor
+            setTimeout(() => {
+                cell.classList.add(currentPlayer === 'red' ? 'red-cursor' : 'blue-cursor');
+            }, 10);
         }
     });
 }
@@ -139,6 +142,7 @@ function drawWinningLine(winningCombo) {
     line.setAttribute('x2', adjustedX2);
     line.setAttribute('y2', adjustedY2);
     line.setAttribute('stroke', currentPlayer === 'red' ? 'red' : 'blue');
+    line.setAttribute('stroke-width', '10');
     winningLineSvg.appendChild(line);
 }
 
@@ -160,7 +164,14 @@ function resetGame() {
     gameActive = true;
     canReset = false;
     currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
-    cells.forEach(cell => cell.innerHTML = '');
+    cells.forEach(cell => {
+        cell.innerHTML = '';
+        // Force cursor refresh
+        cell.style.cursor = 'default';
+        setTimeout(() => {
+            cell.style.cursor = '';
+        }, 10);
+    });
     winningLineSvg.innerHTML = '';
     updateBoardGlow();
     updateCellCursors();
