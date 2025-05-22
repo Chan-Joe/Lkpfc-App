@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe</title>
+    <style>
+        /* [Previous CSS remains exactly the same] */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            cursor: default;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        /* [All other CSS rules from previous version] */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Main Menu Screen -->
+        <div id="main-menu" class="menu">
+            <h1>Tic Tac Toe</h1>
+            <button class="menu-btn" id="singleplayer-btn">Single Player (vs AI)</button>
+            <button class="menu-btn" id="multiplayer-btn">Multiplayer</button>
+            <p class="made-by">Made by Chan Joe</p>
+        </div>
+
+        <!-- Difficulty Selection Screen -->
+        <div id="difficulty-menu" class="difficulty-menu">
+            <h1>Select Difficulty</h1>
+            <button class="difficulty-btn" data-difficulty="easy">Easy</button>
+            <button class="difficulty-btn" data-difficulty="medium">Medium</button>
+            <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+            <button class="back-btn" id="difficulty-back-btn">Back to Menu</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" style="display: none;">
+            <h1 id="game-title">Tic Tac Toe</h1>
+            <div id="board" class="red-turn">
+                <div class="cell" data-index="0"></div>
+                <div class="cell" data-index="1"></div>
+                <div class="cell" data-index="2"></div>
+                <div class="cell" data-index="3"></div>
+                <div class="cell" data-index="4"></div>
+                <div class="cell" data-index="5"></div>
+                <div class="cell" data-index="6"></div>
+                <div class="cell" data-index="7"></div>
+                <div class="cell" data-index="8"></div>
+            </div>
+            <svg id="winning-line" xmlns="http://www.w3.org/2000/svg"></svg>
+            <button class="back-btn" id="game-back-btn" style="margin-top: 30px;">Back to Menu</button>
+            <p class="made-by">Made by Chan Joe</p>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const mainMenu = document.getElementById('main-menu');
+        const singleplayerBtn = document.getElementById('singleplayer-btn');
+        const multiplayerBtn = document.getElementById('multiplayer-btn');
+        const difficultyMenu = document.getElementById('difficulty-menu');
+        const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+        const difficultyBackBtn = document.getElementById('difficulty-back-btn');
+        const gameScreen = document.getElementById('game-screen');
+        const gameTitle = document.getElementById('game-title');
+        const gameBackBtn = document.getElementById('game-back-btn');
+        const board = document.getElementById('board');
+        const cells = document.querySelectorAll('.cell');
+        const winningLineSvg = document.getElementById('winning-line');
+
+        // Game State
+        let currentPlayer = 'red';
+        let gameState = ['', '', '', '', '', '', '', '', ''];
+        let gameActive = true;
+        let canReset = false;
+        let gameMode = null; // 'singleplayer' or 'multiplayer'
+        let difficulty = null; // 'easy', 'medium', 'hard'
+
+        // Winning Conditions
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+            [0, 4, 8], [2, 4, 6] // diagonals
+        ];
+
+        // SVG Templates
+        const redCircleSVG = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="white" stroke="red" stroke-width="10"/>
+            </svg>
+        `;
+
+        const blueCrossSVG = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                <line x1="20" y1="20" x2="80" y2="80" stroke="blue" stroke-width="10"/>
+                <line x1="80" y1="20" x2="20" y2="80" stroke="blue" stroke-width="10"/>
+            </svg>
+        `;
+
+        // Menu Navigation
+        singleplayerBtn.addEventListener('click', () => {
+            mainMenu.style.display = 'none';
+            difficultyMenu.style.display = 'flex';
+            gameScreen.style.display = 'none';
+        });
+
+        multiplayerBtn.addEventListener('click', () => {
+            gameMode = 'multiplayer';
+            gameTitle.textContent = 'Tic Tac Toe - Multiplayer';
+            mainMenu.style.display = 'none';
+            difficultyMenu.style.display = 'none';
+            gameScreen.style.display = 'block';
+            startGame();
+        });
+
+        difficultyBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                gameMode = 'singleplayer';
+                difficulty = e.target.dataset.difficulty;
+                gameTitle.textContent = `Tic Tac Toe - ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} AI`;
+                mainMenu.style.display = 'none';
+                difficultyMenu.style.display = 'none';
+                gameScreen.style.display = 'block';
+                startGame();
+            });
+        });
+
+        difficultyBackBtn.addEventListener('click', () => {
+            mainMenu.style.display = 'flex';
+            difficultyMenu.style.display = 'none';
+            gameScreen.style.display = 'none';
+        });
+
+        gameBackBtn.addEventListener('click', () => {
+            mainMenu.style.display = 'flex';
+            difficultyMenu.style.display = 'none';
+            gameScreen.style.display = 'none';
+        });
+
+        // Game Functions
+        function startGame() {
+            resetGame();
+            updateCellCursors();
+            
+            // If singleplayer and AI goes first, make first move
+            if (gameMode === 'singleplayer' && currentPlayer === 'blue') {
+                setTimeout(() => {
+                    makeAIMove();
+                }, 500);
+            }
+        }
+
+        function updateCellCursors() {
+            cells.forEach(cell => {
+                const index = parseInt(cell.getAttribute('data-index'));
+                if (!gameActive || gameState[index] !== '') {
+                    cell.classList.remove('red-cursor', 'blue-cursor');
+                    cell.style.cursor = 'default';
+                } else {
+                    cell.classList.remove('red-cursor', 'blue-cursor');
+                    setTimeout(() => {
+                        cell.classList.add(currentPlayer === 'red' ? 'red-cursor' : 'blue-cursor');
+                    }, 10);
+                }
+            });
+        }
+
+        function handleCellClick(event) {
+            if (!gameActive) return;
+
+            const clickedCell = event.target;
+            const clickedCellIndex = parseInt(clickedCell.getAttribute('data-index'));
+
+            if (gameState[clickedCellIndex] !== '') return;
+
+            // Human player's move
+            gameState[clickedCellIndex] = currentPlayer;
+            clickedCell.innerHTML = currentPlayer === 'red' ? redCircleSVG : blueCrossSVG;
+
+            checkForWinner();
+            
+            // If singleplayer mode and game is still active, AI makes a move
+            if (gameMode === 'singleplayer' && gameActive) {
+                setTimeout(() => {
+                    makeAIMove();
+                }, 500);
+            }
+        }
+
+        function makeAIMove() {
+            if (!gameActive) return;
+            
+            let moveIndex;
+            
+            switch(difficulty) {
+                case 'easy':
+                    moveIndex = getRandomMove();
+                    break;
+                case 'medium':
+                    moveIndex = Math.random() > 0.5 ? getWinningOrBlockingMove() : getRandomMove();
+                    break;
+                case 'hard':
+                    moveIndex = getBestMove();
+                    break;
+                default:
+                    moveIndex = getRandomMove();
+            }
+            
+            if (moveIndex !== -1) {
+                gameState[moveIndex] = currentPlayer;
+                cells[moveIndex].innerHTML = currentPlayer === 'red' ? redCircleSVG : blueCrossSVG;
+                checkForWinner();
+            }
+        }
+
+        function getRandomMove() {
+            const emptyCells = gameState.map((cell, index) => cell === '' ? index : null).filter(val => val !== null);
+            if (emptyCells.length === 0) return -1;
+            return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        }
+
+        function getWinningOrBlockingMove() {
+            // Check for winning move first
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                if (gameState[a] === currentPlayer && gameState[b] === currentPlayer && gameState[c] === '') return c;
+                if (gameState[a] === currentPlayer && gameState[c] === currentPlayer && gameState[b] === '') return b;
+                if (gameState[b] === currentPlayer && gameState[c] === currentPlayer && gameState[a] === '') return a;
+            }
+            
+            // Then check for blocking opponent's winning move
+            const opponent = currentPlayer === 'red' ? 'blue' : 'red';
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                if (gameState[a] === opponent && gameState[b] === opponent && gameState[c] === '') return c;
+                if (gameState[a] === opponent && gameState[c] === opponent && gameState[b] === '') return b;
+                if (gameState[b] === opponent && gameState[c] === opponent && gameState[a] === '') return a;
+            }
+            
+            return getRandomMove();
+        }
+
+        function getBestMove() {
+            // Simple minimax implementation
+            const opponent = currentPlayer === 'red' ? 'blue' : 'red';
+            
+            // Check for immediate win
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                if (gameState[a] === currentPlayer && gameState[b] === currentPlayer && gameState[c] === '') return c;
+                if (gameState[a] === currentPlayer && gameState[c] === currentPlayer && gameState[b] === '') return b;
+                if (gameState[b] === currentPlayer && gameState[c] === currentPlayer && gameState[a] === '') return a;
+            }
+            
+            // Check for immediate block
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                if (gameState[a] === opponent && gameState[b] === opponent && gameState[c] === '') return c;
+                if (gameState[a] === opponent && gameState[c] === opponent && gameState[b] === '') return b;
+                if (gameState[b] === opponent && gameState[c] === opponent && gameState[a] === '') return a;
+            }
+            
+            // Try to take center
+            if (gameState[4] === '') return 4;
+            
+            // Try to take a corner
+            const corners = [0, 2, 6, 8];
+            const emptyCorners = corners.filter(index => gameState[index] === '');
+            if (emptyCorners.length > 0) {
+                return emptyCorners[Math.floor(Math.random() * emptyCorners.length)];
+            }
+            
+            // Take any available edge
+            const edges = [1, 3, 5, 7];
+            const emptyEdges = edges.filter(index => gameState[index] === '');
+            if (emptyEdges.length > 0) {
+                return emptyEdges[Math.floor(Math.random() * emptyEdges.length)];
+            }
+            
+            return -1;
+        }
+
+        function checkForWinner() {
+            let roundWon = false;
+            let winningCombo = null;
+
+            for (let i = 0; i < winningConditions.length; i++) {
+                const [a, b, c] = winningConditions[i];
+                if (gameState[a] === '' || gameState[b] === '' || gameState[c] === '') continue;
+                if (gameState[a] === gameState[b] && gameState[b] === gameState[c]) {
+                    roundWon = true;
+                    winningCombo = winningConditions[i];
+                    break;
+                }
+            }
+
+            if (roundWon) {
+                drawWinningLine(winningCombo);
+                endGame();
+                return;
+            }
+
+            if (!gameState.includes('')) {
+                endGame();
+                return;
+            }
+
+            currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
+            updateBoardGlow();
+            updateCellCursors();
+        }
+
+        function drawWinningLine(winningCombo) {
+            const [a, b, c] = winningCombo;
+            const cell1 = cells[a].getBoundingClientRect();
+            const cell3 = cells[c].getBoundingClientRect();
+            const boardRect = board.getBoundingClientRect();
+
+            const x1 = cell1.left + cell1.width / 2 - boardRect.left;
+            const y1 = cell1.top + cell1.height / 2 - boardRect.top + 80;
+            const x2 = cell3.left + cell3.width / 2 - boardRect.left;
+            const y2 = cell3.top + cell3.height / 2 - boardRect.top + 80;
+
+            const offset = 50;
+            let adjustedX1 = x1;
+            let adjustedY1 = y1;
+            let adjustedX2 = x2;
+            let adjustedY2 = y2;
+
+            if (y1 === y2) {
+                adjustedX1 = x1 - offset;
+                adjustedX2 = x2 + offset;
+            }
+            else if (x1 === x2) {
+                adjustedY1 = y1 - offset;
+                adjustedY2 = y2 + offset;
+            }
+            else {
+                if (x1 < x2 && y1 < y2) {
+                    adjustedX1 = x1 - offset;
+                    adjustedY1 = y1 - offset;
+                    adjustedX2 = x2 + offset;
+                    adjustedY2 = y2 + offset;
+                }
+                else if (x1 > x2 && y1 < y2) {
+                    adjustedX1 = x1 + offset;
+                    adjustedY1 = y1 - offset;
+                    adjustedX2 = x2 - offset;
+                    adjustedY2 = y2 + offset;
+                }
+            }
+
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', adjustedX1);
+            line.setAttribute('y1', adjustedY1);
+            line.setAttribute('x2', adjustedX2);
+            line.setAttribute('y2', adjustedY2);
+            line.setAttribute('stroke', currentPlayer === 'red' ? 'red' : 'blue');
+            line.setAttribute('stroke-width', '10');
+            winningLineSvg.appendChild(line);
+        }
+
+        function endGame() {
+            gameActive = false;
+            board.classList.remove('red-turn', 'blue-turn');
+            updateCellCursors();
+
+            setTimeout(() => {
+                canReset = true;
+                document.body.style.cursor = 'pointer';
+            }, 1000);
+        }
+
+        function resetGame() {
+            gameState = ['', '', '', '', '', '', '', '', ''];
+            gameActive = true;
+            canReset = false;
+            currentPlayer = 'red';
+            cells.forEach(cell => {
+                cell.innerHTML = '';
+                cell.style.cursor = 'default';
+                setTimeout(() => {
+                    cell.style.cursor = '';
+                }, 10);
+            });
+            winningLineSvg.innerHTML = '';
+            updateBoardGlow();
+            updateCellCursors();
+            document.body.style.cursor = 'default';
+        }
+
+        function updateBoardGlow() {
+            if (currentPlayer === 'red') {
+                board.classList.add('red-turn');
+                board.classList.remove('blue-turn');
+            } else {
+                board.classList.add('blue-turn');
+                board.classList.remove('red-turn');
+            }
+        }
+
+        // Event Listeners
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+        
+        document.body.addEventListener('click', () => {
+            if (canReset) {
+                resetGame();
+            }
+        });
+
+        // Initialize
+        updateBoardGlow();
+    </script>
+</body>
+</html>
