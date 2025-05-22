@@ -93,14 +93,13 @@
         }
 
         #board {
-            display: grid;
+            display: none;
             grid-template-columns: repeat(3, 100px);
             grid-template-rows: repeat(3, 100px);
             gap: 5px;
             margin: 20px auto;
             position: relative;
             transition: box-shadow 0.3s ease-in-out;
-            display: none;
         }
 
         #board.red-turn {
@@ -265,6 +264,7 @@
             window.location.hash = 'single-player';
             mainMenu.style.display = 'none';
             difficultyMenu.style.display = 'flex';
+            board.style.display = 'none';
         });
 
         multiplayerBtn.addEventListener('click', () => {
@@ -284,7 +284,21 @@
             window.location.hash = '';
             difficultyMenu.style.display = 'none';
             mainMenu.style.display = 'flex';
+            board.style.display = 'none';
+            resetGameState();
         });
+
+        function resetGameState() {
+            gameState = ['', '', '', '', '', '', '', '', ''];
+            gameActive = true;
+            canReset = false;
+            currentPlayer = 'red';
+            cells.forEach(cell => {
+                cell.innerHTML = '';
+            });
+            winningLineSvg.innerHTML = '';
+            document.body.style.cursor = 'default';
+        }
 
         function startGame() {
             mainMenu.style.display = 'none';
