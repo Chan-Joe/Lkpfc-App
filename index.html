@@ -246,15 +246,30 @@
             </svg>
         `;
 
+        // Check URL hash on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const hash = window.location.hash;
+            if (hash === '#single-player') {
+                gameMode = 'singleplayer';
+                mainMenu.style.display = 'none';
+                difficultyMenu.style.display = 'flex';
+            } else if (hash === '#multiplayer') {
+                gameMode = 'multiplayer';
+                startGame();
+            }
+        });
+
         // Menu event listeners
         singleplayerBtn.addEventListener('click', () => {
             gameMode = 'singleplayer';
+            window.location.hash = 'single-player';
             mainMenu.style.display = 'none';
             difficultyMenu.style.display = 'flex';
         });
 
         multiplayerBtn.addEventListener('click', () => {
             gameMode = 'multiplayer';
+            window.location.hash = 'multiplayer';
             startGame();
         });
 
@@ -266,6 +281,7 @@
         });
 
         difficultyBackBtn.addEventListener('click', () => {
+            window.location.hash = '';
             difficultyMenu.style.display = 'none';
             mainMenu.style.display = 'flex';
         });
